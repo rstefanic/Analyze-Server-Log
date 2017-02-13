@@ -20,22 +20,17 @@ data MessageTree = Leaf
   deriving (Show, Eq)
 
 
--- | TESTS
-
--- | @testParse p n f@ tests the log file parser @p@ by running it
---   on the first @n@ lines of file @f@.
-testParse :: (String -> [LogMessage])
+-- | Read the error log and construct a binary tree out of the log
+parseErrors :: (String -> [LogMessage])
           -> Int
           -> FilePath
           -> IO [LogMessage]
-testParse parse n file = take n . parse <$> readFile file
+parseErrors parse n file = take n . parse <$> readFile file
 
--- | @testWhatWentWrong p w f@ tests the log file parser @p@ and
---   warning message extractor @w@ by running them on the log file
---   @f@.
-testWhatWentWrong :: (String -> [LogMessage])
+-- | Read the error log and find only the errors
+reconstructErrors :: (String -> [LogMessage])
                   -> ([LogMessage] -> [String])
                   -> FilePath
                   -> IO [String]
-testWhatWentWrong parse whatWentWrong file
+reconstructErrors parse whatWentWrong file
   = whatWentWrong . parse <$> readFile file

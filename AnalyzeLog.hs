@@ -1,11 +1,11 @@
-{-# OPTIONS_GHC -Wall #-}
+ {-# OPTIONS_GHC -Wall #-}
 
 module AnalyzeLog where
 
 import Log
 import Data.List.Split
 
--- | Total functions for safety
+-- | Safe helper Functions
 
 safeHead :: [a] -> Maybe a
 safeHead []    = Nothing
@@ -30,6 +30,8 @@ fhelper (Just x) = x
 fhelper  _       = ""
 
 
+-- | Other Helper functions
+
 -- Parse an individual message
 parseMessage :: String -> LogMessage
 parseMessage [] = Unknown "Empty String"
@@ -40,20 +42,20 @@ parseMessage (x:xs)
                                      (read $ fhelper $ safeSecond $ words xs)
                                      (restOfMsg $ drop 2 $ words xs)
             | otherwise = Unknown "Cannot read current message."
-           where restOfMsg []        = error "Error"
+           where restOfMsg []        = []
                  restOfMsg (y:[])    = y ++ []
                  restOfMsg (y:ys)    = y ++ " " ++ restOfMsg ys
-                 
-                      
--- Split the message
+
+
+-- Split the message into the log type
 parse :: String -> [LogMessage]
 parse x = parseFile $ splitOn "\n" x
-    where parseFile []     = error "Empty File"
+    where parseFile []     = [Unknown "Empty File"]
           parseFile (y:[]) = parseMessage y : []
           parseFile (y:ys) = parseMessage y : parseFile ys
-          
 
--- Insert a LogMessage into a tree
+
+-- Insert a LogMessage into a binary tree
 insert :: LogMessage -> MessageTree -> MessageTree
 insert logMsg Leaf                              = Node Leaf logMsg Leaf
 insert logMsg (Node a (LogMessage ba bb bc ) c) = case logMsg of
@@ -65,7 +67,7 @@ insert logMsg (Node a (LogMessage ba bb bc ) c) = case logMsg of
 insert _      _                                 = error "Could not sort message into list."
 
 
--- Build a tree to parse the logs
+-- Build a binary tree out of the log messages
 build :: [LogMessage] -> MessageTree
 build [] = Leaf
 build x  = buildMessageTree x Leaf
@@ -74,10 +76,10 @@ build x  = buildMessageTree x Leaf
            buildMessageTree (y:ys) tree = buildMessageTree ys (insert y tree)
 
 
--- Sort the tree 
+-- Sort the tree
 inOrder :: MessageTree -> [LogMessage]
 inOrder tree = case tree of
-       Node a msg Leaf -> msg : inOrder a 
+       Node a msg Leaf -> msg : inOrder a
        Node Leaf msg b -> msg : inOrder b
        Node _    msg _ -> msg : []
        Leaf            -> error "Couldn't create log of messages"
@@ -97,5 +99,5 @@ whatWentWrong y =
 
       getErrors ((LogMessage _ _ _)        :xs) str = getErrors xs str
       getErrors (_:xs)                          str = getErrors xs str
-      
+
   in  getErrors y []
