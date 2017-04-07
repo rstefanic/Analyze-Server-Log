@@ -11,12 +11,10 @@ safeHead :: [a] -> Maybe a
 safeHead []    = Nothing
 safeHead (x:_) = Just x
 
-
 safeTail :: [a] -> Maybe [a]
 safeTail []     = Nothing
 safeTail (x:[]) = Just (x : [])
 safeTail (_:xs) = Just xs
-
 
 safeSecond :: [a] -> Maybe a
 safeSecond []       = Nothing
@@ -24,11 +22,18 @@ safeSecond (_:y:[]) = Just y
 safeSecond (_:y:_)  = Just y
 safeSecond _        = Nothing
 
-
 fhelper :: Maybe String -> String
 fhelper (Just x) = x
 fhelper  _       = ""
 
+readFirst :: Read a => String -> a
+readFirst = read . fhelper . safeHead . words
+
+readSecond :: Read a => String -> a
+readSecond = read . fhelper . safeSecond . words
+
+fdrop :: ([String] -> String) -> Int -> String -> String
+fdrop f n = f . drop n . words
 
 -- | Other Helper functions
 
@@ -36,11 +41,9 @@ fhelper  _       = ""
 parseMessage :: String -> LogMessage
 parseMessage [] = Unknown "Empty String"
 parseMessage (x:xs)
-            | x == 'I'  = LogMessage Info (read $ fhelper $ safeHead $ words xs) (restOfMsg $ drop 1 (words xs))
-            | x == 'W'  = LogMessage Warning (read $ fhelper $ safeHead $ words xs) (restOfMsg $ drop 1 (words xs))
-            | x == 'E'  = LogMessage (Error (read $ fhelper $ safeHead $ words xs))
-                                     (read $ fhelper $ safeSecond $ words xs)
-                                     (restOfMsg $ drop 2 $ words xs)
+            | x == 'I'  = LogMessage Info (readFirst xs) (fdrop restOfMsg 1 xs)
+            | x == 'W'  = LogMessage Warning (readFirst xs) (fdrop restOfMsg 1 xs)
+            | x == 'E'  = LogMessage (Error (readFirst xs)) (readSecond xs) (fdrop restOfMsg 2 xs)
             | otherwise = Unknown "Cannot read current message."
            where restOfMsg []        = []
                  restOfMsg (y:[])    = y ++ []
