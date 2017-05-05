@@ -1,8 +1,9 @@
- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module AnalyzeLog where
 
 import Log
+import Data.Bool
 import Data.List.Split
 
 -- | Safe helper Functions
@@ -10,7 +11,6 @@ import Data.List.Split
 safeHead :: [a] -> Maybe a
 safeHead []    = Nothing
 safeHead (x:_) = Just x
-
 safeTail :: [a] -> Maybe [a]
 safeTail []     = Nothing
 safeTail (x:[]) = Just (x : [])
@@ -41,14 +41,13 @@ fdrop f n = f . drop n . words
 parseMessage :: String -> LogMessage
 parseMessage [] = Unknown "Empty String"
 parseMessage (x:xs)
-            | x == 'I'  = LogMessage Info (readFirst xs) (fdrop restOfMsg 1 xs)
-            | x == 'W'  = LogMessage Warning (readFirst xs) (fdrop restOfMsg 1 xs)
-            | x == 'E'  = LogMessage (Error (readFirst xs)) (readSecond xs) (fdrop restOfMsg 2 xs)
-            | otherwise = Unknown "Cannot read current message."
+            | x == 'I'               = LogMessage Info (readFirst xs) (fdrop restOfMsg 1 xs)
+            | x == 'W'               = LogMessage Warning (readFirst xs) (fdrop restOfMsg 1 xs)
+            | x == 'E'               = LogMessage (Error (readFirst xs)) (readSecond xs) (fdrop restOfMsg 2 xs)
            where restOfMsg []        = []
                  restOfMsg (y:[])    = y ++ []
                  restOfMsg (y:ys)    = y ++ " " ++ restOfMsg ys
-
+parseMessage _                       = Unknown "Cannot read current message."
 
 -- Split the message into the log type
 parse :: String -> [LogMessage]
@@ -66,7 +65,7 @@ insert logMsg (Node a (LogMessage ba bb bc ) c) = case logMsg of
               LogMessage _ x _
                          | x < bb              -> Node Leaf logMsg (Node a (LogMessage ba bb bc) c)
                          | x > bb              -> Node (Node a (LogMessage ba bb bc) c) logMsg Leaf
-              LogMessage   _ _ _               -> error "Could not sort message into list."
+              _                                -> error "Could not sort message into list."
 insert _      _                                 = error "Could not sort message into list."
 
 
@@ -91,16 +90,12 @@ inOrder tree = case tree of
 -- Filter for all of the errors
 whatWentWrong :: [LogMessage] -> [String]
 whatWentWrong y =
-  let getErrors []                              str = str
-      getErrors ((LogMessage (Error x) _ c):[]) str = if x > 50
-                                                      then c : str
-                                                      else str
-      getErrors ((LogMessage  _ _ _)       :[]) str = str
-      getErrors ((LogMessage (Error x) _ c):xs) str
-                                  | x > 50          = getErrors xs (c : str)
-                                  | otherwise       = getErrors xs str
-
-      getErrors ((LogMessage _ _ _)        :xs) str = getErrors xs str
-      getErrors (_:xs)                          str = getErrors xs str
+  let getErrors []                              str              = str
+      getErrors ((LogMessage (Error x) _ c):[]) str              = bool str (c : str) (x > 50)
+      getErrors ((LogMessage  _ _ _)       :[]) str              = str
+      getErrors ((LogMessage (Error x) _ c):xs) str | x > 50     = getErrors xs (c : str)
+                                                    | otherwise  = getErrors xs str
+      getErrors ((LogMessage _ _ _)        :xs) str              = getErrors xs str
+      getErrors (_:xs)                          str              = getErrors xs str
 
   in  getErrors y []
